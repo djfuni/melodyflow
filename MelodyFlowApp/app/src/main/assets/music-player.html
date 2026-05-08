@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MelodyFlow · M3 音乐播放器</title>
+<meta name="theme-color" content="#7c5cfc">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MelodyFlow">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%237c5cfc' width='100' height='100' rx='20'/%3E%3Ctext x='50' y='68' text-anchor='middle' fill='white' font-size='60'%3E%E2%99%AA%3C/text%3E%3C/svg%3E" type="image/svg+xml">
+<style>
+/* ══════════════════════════ M3 Design Tokens ══════════════════════════ */
+:root {
+  --md-primary: #7c5cfc;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #efe2ff;
+  --md-on-primary-container: #260e5a;
+  --md-secondary: #625b71;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #e8def8;
+  --md-on-secondary-container: #1d192b;
+  --md-tertiary: #7d5260;
+  --md-on-tertiary: #ffffff;
+  --md-tertiary-container: #ffd8e4;
+  --md-on-tertiary-container: #31101d;
+  --md-error: #b3261e;
+  --md-on-error: #ffffff;
+  --md-error-container: #f9dedc;
+  --md-on-error-container: #410e0b;
+  --md-background: #1a1922;
+  --md-on-background: #e6e1e6;
+  --md-surface: #1a1922;
+  --md-on-surface: #e6e1e6;
+  --md-surface-variant: #49454f;
+  --md-on-surface-variant: #cac4d0;
+  --md-outline: #938f99;
+  --md-outline-variant: #49454f;
+  --md-shadow: rgba(0,0,0,0.3);
+  --md-elevation-0: none;
+  --md-elevation-1: 0 1px 3px rgba(0,0,0,0.3);
+  --md-elevation-2: 0 2px 6px rgba(0,0,0,0.35);
+  --md-elevation-3: 0 4px 12px rgba(0,0,0,0.4);
+  --md-elevation-4: 0 8px 24px rgba(0,0,0,0.45);
+  --md-elevation-5: 0 12px 36px rgba(0,0,0,0.5);
+  --md-shape-xs: 4px;
+  --md-shape-sm: 8px;
+  --md-shape-md: 12px;
+  --md-shape-lg: 16px;
+  --md-shape-xl: 24px;
+  --md-shape-full: 999px;
+  --md-state-hover: rgba(124,92,252,0.08);
+  --md-state-focus: rgba(124,92,252,0.12);
+  --md-state-pressed: rgba(124,92,252,0.12);
+  --md-state-dragged: rgba(124,92,252,0.16);
+  --md-title-font: 'Google Sans','PingFang SC','Noto Sans SC',system-ui,-apple-system,sans-serif;
+  --md-body-font: 'Google Sans Text','PingFang SC','Noto Sans SC',system-ui,-apple-system,sans-serif;
+  --transition: 0.2s cubic-bezier(0.2,0,0,1);
+  --bg-blur: none;
+}
+body.light {
+  --md-primary: #6750a4;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #eaddff;
+  --md-on-primary-container: #21005d;
+  --md-secondary: #625b71;
+  --md-secondary-container: #e8def8;
+  --md-on-secondary-container: #1d192b;
+  --md-tertiary: #7d5260;
+  --md-tertiary-container: #ffd8e4;
+  --md-on-tertiary-container: #31101d;
+  --md-background: #fffbfe;
+  --md-on-background: #1c1b1f;
+  --md-surface: #fffbfe;
+  --md-on-surface: #1c1b1f;
+  --md-surface-variant: #e7e0ec;
+  --md-on-surface-variant: #49454f;
+  --md-outline: #79747e;
+  --md-outline-variant: #cac4d0;
+  --md-shadow: rgba(0,0,0,0.08);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { height:100%; overflow:hidden; }
+body {
+  font-family: var(--md-body-font);
+  background: var(--md-background);
+  color: var(--md-on-background);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--md-outline-variant); border-radius:var(--md-shape-full); }
+
+/* ══════════════════════════ Layout ══════════════════════════ */
+.app { display:flex; height:100vh; }
+
+/* ══════════════════════════ Navigation Rail ══════════════════════════ */
+.nav-rail {
+  width:72px; flex-shrink:0;
+  background:var(--md-surface);
+  display:flex; flex-direction:column; align-items:center;
+  padding:20px 0 16px;
+  border-right:1px solid var(--md-outline-variant);
+  z-index:5;
+}
+@media(max-width:640px){.nav-rail{width:56px;padding-top:12px}}
+.nav-logo {
+  width:40px; height:40px; border-radius:var(--md-shape-full);
+  background:var(--md-primary); color:var(--md-on-primary);
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; margin-bottom:20px; cursor:pointer;
+  transition:var(--transition);
+}
+.nav-logo:active { transform:scale(.92); }
+
+.nav-item {
+  width:56px; height:44px; border-radius:var(--md-shape-full);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  cursor:pointer; position:relative; margin-bottom:6px;
+  transition:var(--transition); text-decoration:none;
+  gap:1px;
+}
+.nav-item svg { width:22px; height:22px; color:var(--md-on-surface-variant); transition:var(--transition); }
+.nav-item span { font-size:10px; color:var(--md-on-surface-variant); transition:var(--transition); line-height:1; }
+.nav-item:hover svg, .nav-item:hover span { color:var(--md-on-surface); }
+.nav-item.active svg, .nav-item.active span { color:var(--md-primary); }
+.nav-item.active::before {
+  content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
+  width:3px; height:28px; border-radius:0 4px 4px 0;
+  background:var(--md-primary);
+}
+.nav-item .fav-badge {
+  position:absolute; top:2px; right:6px; width:8px; height:8px;
+  border-radius:50%; background:var(--md-error);
+  display:none;
+}
+
+/* ══════════════════════════ Sidebar (Playlists) ══════════════════════════ */
+.sidebar {
+  width:200px; flex-shrink:0;
+  background:var(--md-surface);
+  display:flex; flex-direction:column;
+  padding:12px 8px; overflow-y:auto;
+  border-right:1px solid var(--md-outline-variant);
+}
+@media(max-width:768px){.sidebar{display:none}}
+.sidebar-title {
+  font-size:12px; font-weight:500; color:var(--md-on-surface-variant);
+  padding:8px 12px 6px; letter-spacing:.5px;
+}
+.pl-grid { display:flex; flex-direction:column; gap:2px; }
+.pl-item {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 10px; border-radius:var(--md-shape-full);
+  cursor:pointer; transition:var(--transition);
+  color:var(--md-on-surface-variant); font-size:13px;
+}
+.pl-item:hover { background:var(--md-state-hover); color:var(--md-on-surface); }
+.pl-item:active { background:var(--md-state-pressed); transform:scale(.98); }
+.pl-item img { width:28px; height:28px; border-radius:var(--md-shape-sm); object-fit:cover; flex-shrink:0; }
+.pl-item .pln { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pl-item .pl-playing { display:none; font-size:9px; color:var(--md-primary); margin-left:auto; }
+.pl-item.active { background:var(--md-primary-container); color:var(--md-on-primary-container); }
+.pl-item.active .pl-playing { display:inline; }
+
+/* ══════════════════════════ Main Content ══════════════════════════ */
+.mw { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+.main { flex:1; display:flex; flex-direction:column; padding:16px 20px 0; overflow-y:auto; }
+@media(max-width:640px){.main{padding:10px 12px 0}}
+
+/* Search - M3 Outlined Field */
+.search-wrap { position:relative; margin-bottom:12px; flex-shrink:0; }
+.search-wrap input {
+  width:100%; padding:12px 44px 12px 44px;
+  background:var(--md-surface-variant); border:1px solid transparent;
+  border-radius:var(--md-shape-full); color:var(--md-on-surface);
+  font-size:14px; font-family:var(--md-body-font); outline:none;
+  transition:var(--transition);
+}
+.search-wrap input:focus { border-color:var(--md-primary); background:var(--md-surface); }
+.search-wrap input::placeholder { color:var(--md-on-surface-variant); }
+.search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); width:18px; height:18px; color:var(--md-on-surface-variant); pointer-events:none; }
+.search-btn {
+  position:absolute; right:6px; top:50%; transform:translateY(-50%);
+  background:var(--md-primary); color:var(--md-on-primary); border:none;
+  padding:6px 18px; border-radius:var(--md-shape-full); font-size:12px;
+  font-weight:500; font-family:var(--md-body-font); cursor:pointer;
+  transition:var(--transition); letter-spacing:.3px;
+}
+.search-btn:hover { filter:brightness(1.1); box-shadow:var(--md-elevation-2); }
+.search-btn:active { transform:translateY(-50%) scale(.96); }
+
+/* Header */
+.list-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-shrink:0; }
+.list-hdr h2 { font-size:18px; font-weight:500; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.list-hdr .cnt { font-size:12px; color:var(--md-on-surface-variant); white-space:nowrap; }
+.list-hdr .filter-btn {
+  background:none; border:1px solid var(--md-outline-variant); color:var(--md-on-surface-variant);
+  padding:4px 12px; border-radius:var(--md-shape-full); font-size:11px; cursor:pointer;
+  font-family:var(--md-body-font); transition:var(--transition); white-space:nowrap;
+}
+.list-hdr .filter-btn:hover { border-color:var(--md-primary); color:var(--md-primary); }
+
+.filter-bar { margin-bottom:8px; flex-shrink:0; display:none; }
+.filter-bar.show { display:block; }
+.filter-bar input {
+  width:100%; padding:8px 14px;
+  background:var(--md-surface-variant); border:none;
+  border-radius:var(--md-shape-full); color:var(--md-on-surface);
+  font-size:13px; font-family:var(--md-body-font); outline:none;
+}
+.filter-bar input::placeholder { color:var(--md-on-surface-variant); }
+
+/* Song List */
+.sl-w { flex:1; overflow-y:auto; min-height:0; padding-bottom:4px; }
+.sl { display:flex; flex-direction:column; gap:1px; }
+.si {
+  display:grid; grid-template-columns:28px 1fr auto 24px;
+  align-items:center; gap:6px;
+  padding:6px 10px; border-radius:var(--md-shape-lg);
+  cursor:pointer; transition:all .15s ease;
+}
+.si:hover { background:var(--md-state-hover); transform:translateX(2px); }
+.si:active { background:var(--md-state-pressed); transform:scale(.99); }
+.si.active {
+  background:var(--md-primary-container); border:1px solid var(--md-primary);
+}
+.si .idx { color:var(--md-on-surface-variant); font-size:11px; text-align:center; width:28px; font-variant-numeric:tabular-nums; }
+.si.active .idx { color:var(--md-primary); font-weight:600; }
+.si .sii { display:flex; align-items:center; gap:8px; min-width:0; }
+.si .sii img { width:36px; height:36px; border-radius:var(--md-shape-sm); object-fit:cover; flex-shrink:0; }
+.si .sim { min-width:0; }
+.si .sin { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.si.active .sin { color:var(--md-primary); }
+.si .sia { font-size:11px; color:var(--md-on-surface-variant); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.si .dur { font-size:11px; color:var(--md-on-surface-variant); font-variant-numeric:tabular-nums; display:none; }
+.si .siact { display:flex; align-items:center; justify-content:center; }
+.si .siact svg { width:14px; height:14px; cursor:pointer; color:var(--md-outline); transition:var(--transition); }
+.si .siact svg:hover { color:var(--md-error); transform:scale(1.15); }
+.si .siact svg.fav { fill:var(--md-error); color:var(--md-error); }
+/* Playing animation in list */
+.si .playing-indicator { display:none; width:14px; height:14px; align-items:center; gap:1px; }
+.si.active .playing-indicator { display:flex; }
+.si .playing-indicator span { width:2px; background:var(--md-primary); border-radius:2px; animation:playBar .5s ease-in-out infinite alternate; }
+.si .playing-indicator span:nth-child(1){height:6px;animation-delay:0s}
+.si .playing-indicator span:nth-child(2){height:12px;animation-delay:.15s}
+.si .playing-indicator span:nth-child(3){height:4px;animation-delay:.3s}
+.si .playing-indicator span:nth-child(4){height:10px;animation-delay:.1s}
+@keyframes playBar{0%{transform:scaleY(.4)}100%{transform:scaleY(1)}}
+
+/* ══════════════════════════ Now Playing Panel ══════════════════════════ */
+.panel {
+  width:320px; flex-shrink:0;
+  background:var(--md-surface);
+  border-left:1px solid var(--md-outline-variant);
+  display:flex; flex-direction:column; padding:16px; overflow-y:auto; position:relative;
+}
+@media(max-width:1100px){.panel{display:none;position:fixed;top:0;right:0;bottom:70px;width:340px;z-index:20;box-shadow:var(--md-elevation-5)}}
+.panel.show { display:flex; }
+/* Blurred background */
+.panel-bg { position:absolute; inset:0; overflow:hidden; opacity:.08; pointer-events:none; }
+.panel-bg img { width:100%; height:100%; object-fit:cover; filter:blur(40px); transform:scale(1.2); }
+.panel > * { position:relative; z-index:1; }
+
+.cw {
+  position:relative; width:100%; aspect-ratio:1;
+  border-radius:var(--md-shape-xl); overflow:hidden;
+  margin-bottom:14px; box-shadow:var(--md-elevation-4);
+}
+.cw img { width:100%; height:100%; object-fit:cover; transition:transform .5s; }
+.cw.p img { animation:spin 20s linear infinite; }
+@keyframes spin{to{transform:rotate(360deg)}}
+.cw .cr { position:absolute; inset:8%; border-radius:50%; border:1px solid rgba(255,255,255,.05); pointer-events:none; }
+.cw .cc { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:16%; border-radius:50%; background:linear-gradient(135deg,rgba(255,255,255,.08),transparent); border:1px solid rgba(255,255,255,.06); pointer-events:none; backdrop-filter:blur(4px); }
+.cw:not(.p) .cr,.cw:not(.p) .cc{display:none}
+
+.ni { text-align:center; margin-bottom:10px; }
+.ni h3 { font-size:16px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ni p { font-size:13px; color:var(--md-on-surface-variant); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+
+/* Visualizer Canvas */
+.viz { width:100%; height:48px; border-radius:var(--md-shape-md); margin-bottom:10px; }
+
+/* Lyrics */
+.lc { flex:1; overflow-y:auto; padding:4px 0; scroll-behavior:smooth; }
+.ll {
+  text-align:center; font-size:13px; color:var(--md-on-surface-variant);
+  padding:8px 4px; transition:all .25s ease; line-height:1.6;
+  min-height:34px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; border-radius:var(--md-shape-sm);
+}
+.ll:hover { color:var(--md-on-surface); background:var(--md-state-hover); }
+.ll.active { color:var(--md-primary); font-size:16px; font-weight:600; }
+.ll.em { color:var(--md-on-surface-variant); font-size:12px; cursor:default; min-height:0; padding:4px; }
+.ll.em:hover { background:none; }
+
+/* Panel close button (mobile) */
+.panel-close { display:none; position:absolute; top:8px; right:8px; z-index:2; width:32px; height:32px; border-radius:50%; background:var(--md-surface-variant); border:none; color:var(--md-on-surface); cursor:pointer; align-items:center; justify-content:center; font-size:16px; }
+@media(max-width:1100px){.panel-close{display:flex}}
+
+/* ══════════════════════════ Bottom App Bar (Player) ══════════════════════════ */
+.player {
+  flex-shrink:0;
+  background:var(--md-surface); border-top:1px solid var(--md-outline-variant);
+  display:grid; grid-template-columns:minmax(160px,1fr) auto minmax(140px,200px);
+  align-items:center; padding:6px 16px; gap:8px;
+  z-index:4; box-shadow:var(--md-elevation-3);
+}
+@media(max-width:768px){.player{grid-template-columns:1fr auto;padding:4px 10px;gap:4px}}
+@media(max-width:640px){.player{grid-template-columns:1fr auto;gap:2px;padding:4px 8px}}
+
+.pl-l { display:flex; align-items:center; gap:10px; min-width:0; }
+.pl-l img { width:40px; height:40px; border-radius:var(--md-shape-sm); object-fit:cover; flex-shrink:0; transition:var(--transition); }
+.pl-l .pm { min-width:0; }
+.pl-l .pn { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--md-on-surface); }
+.pl-l .pa { font-size:11px; color:var(--md-on-surface-variant); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; cursor:pointer; }
+.pl-l .pa:hover { color:var(--md-primary); text-decoration:underline; }
+
+.pl-c { display:flex; flex-direction:column; align-items:center; gap:1px; max-width:460px; margin:0 auto; width:100%; }
+@media(max-width:768px){.pl-c{display:none}}
+/* Mobile controls row */
+.pl-c-mobile { display:none; }
+@media(max-width:768px){.pl-c-mobile{display:flex;align-items:center;justify-content:center;gap:6px;}}
+
+/* M3 Filled Icon Buttons */
+.pb { display:flex; align-items:center; gap:4px; }
+.pb button {
+  width:34px; height:34px; border-radius:var(--md-shape-full);
+  background:transparent; border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--md-on-surface-variant); transition:var(--transition);
+}
+.pb button:hover { background:var(--md-state-hover); }
+.pb button:active { background:var(--md-state-pressed); transform:scale(.92); }
+.pb button svg { width:20px; height:20px; }
+.pb .bp {
+  width:40px; height:40px;
+  background:var(--md-primary); color:var(--md-on-primary)!important;
+  box-shadow:var(--md-elevation-2); position:relative; overflow:hidden;
+}
+.pb .bp:hover { background:var(--md-primary); filter:brightness(1.1); box-shadow:var(--md-elevation-3); }
+.pb .bp:active { transform:scale(.92); }
+.pb .bp svg { width:22px; height:22px; position:relative; z-index:2; }
+.pb .am { color:var(--md-primary)!important; }
+
+/* Equalizer on play button */
+.eq { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:2px; opacity:0; transition:.25s; z-index:1; }
+.bp.p .eq { opacity:1; }
+.bp.p .pd { opacity:0; }
+.eqb { width:2px; height:8px; background:var(--md-on-primary); border-radius:2px; animation:e .6s ease-in-out infinite alternate; }
+.eqb:nth-child(1){animation-delay:0s;height:6px}
+.eqb:nth-child(2){animation-delay:.15s;height:12px}
+.eqb:nth-child(3){animation-delay:.3s;height:5px}
+.eqb:nth-child(4){animation-delay:.1s;height:10px}
+@keyframes e{0%{transform:scaleY(.4)}100%{transform:scaleY(1)}}
+
+/* Progress - M3 Slider */
+.pa2 { width:100%; display:flex; align-items:center; gap:6px; }
+.pa2 .t { font-size:10px; color:var(--md-on-surface-variant); font-variant-numeric:tabular-nums; min-width:26px; }
+.pa2 .t:last-child { text-align:right; }
+.pb2 { flex:1; height:4px; background:var(--md-surface-variant); border-radius:var(--md-shape-full); cursor:pointer; position:relative; overflow:visible; touch-action:none; }
+.pb2 .pf { height:100%; border-radius:var(--md-shape-full); background:var(--md-primary); width:0%; position:relative; transition:width .1s linear; }
+.pb2 .pf::after { content:''; position:absolute; right:-6px; top:50%; transform:translateY(-50%); width:12px; height:12px; border-radius:50%; background:var(--md-primary); opacity:0; transition:opacity .15s; box-shadow:var(--md-elevation-2); }
+.pb2:hover .pf::after, .pb2.dragging .pf::after { opacity:1; }
+.pb2:hover { height:4px; }
+
+.pl-r { display:flex; align-items:center; justify-content:flex-end; gap:6px; }
+@media(max-width:640px){.pl-r{gap:4px}}
+.pl-r svg { width:18px; height:18px; color:var(--md-on-surface-variant); cursor:pointer; transition:var(--transition); flex-shrink:0; }
+.pl-r svg:hover { color:var(--md-on-surface); }
+.vw { display:flex; align-items:center; gap:4px; }
+.vb { width:60px; height:4px; background:var(--md-surface-variant); border-radius:var(--md-shape-full); cursor:pointer; position:relative; touch-action:none; }
+@media(max-width:640px){.vb{width:40px}}
+.vb .vf { height:100%; border-radius:var(--md-shape-full); background:var(--md-primary); width:70%; }
+
+/* Speed button */
+.speed-btn {
+  background:var(--md-surface-variant); border:none;
+  color:var(--md-on-surface-variant); font-size:10px; font-weight:600;
+  padding:2px 6px; border-radius:var(--md-shape-xs);
+  cursor:pointer; font-family:var(--md-body-font); transition:var(--transition);
+  min-width:28px; text-align:center;
+}
+.speed-btn:hover { background:var(--md-primary-container); color:var(--md-primary); }
+
+/* ══════════════════════════ Theme Toggle Button ══════════════════════════ */
+.theme-btn {
+  background:var(--md-surface-variant); border:none;
+  width:28px; height:28px; border-radius:var(--md-shape-full);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:var(--md-on-surface-variant); transition:var(--transition);
+  font-size:14px; margin-top:auto; margin-bottom:8px;
+}
+.theme-btn:hover { background:var(--md-state-hover); color:var(--md-on-surface); transform:scale(1.1); }
+
+/* ══════════════════════════ Utils ══════════════════════════ */
+.sp { width:22px; height:22px; border:2px solid var(--md-outline-variant); border-top-color:var(--md-primary); border-radius:50%; animation:sp .7s linear infinite; margin:30px auto; }
+@keyframes sp{to{transform:rotate(360deg)}}
+.em { text-align:center; padding:50px 20px; color:var(--md-on-surface-variant); }
+.em svg { width:48px; height:48px; margin-bottom:10px; opacity:.3; }
+.em p { font-size:13px; }
+.em .sub { font-size:11px; margin-top:3px; opacity:.6; }
+
+.card-em { background:var(--md-surface-variant); border-radius:var(--md-shape-lg); padding:24px; text-align:center; }
+
+/* Toast */
+.toast {
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(12px);
+  background:var(--md-surface); color:var(--md-on-surface);
+  padding:8px 18px; border-radius:var(--md-shape-full);
+  border:1px solid var(--md-outline-variant);
+  box-shadow:var(--md-elevation-3); font-size:12px;
+  opacity:0; transition:all .3s ease; z-index:100; pointer-events:none; white-space:nowrap;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.info { border-color:var(--md-primary); }
+.toast.success { border-color:#2e7d32; }
+.toast.warn { border-color:var(--md-tertiary); }
+
+/* Shortcut overlay */
+.sh {
+  position:fixed; bottom:50%; left:50%; transform:translate(-50%,50%) scale(.96);
+  background:var(--md-surface); border:1px solid var(--md-outline-variant);
+  border-radius:var(--md-shape-xl); padding:24px 32px;
+  box-shadow:var(--md-elevation-5); z-index:200;
+  opacity:0; pointer-events:none; transition:all .25s ease;
+  min-width:250px;
+}
+.sh.show { opacity:1; transform:translate(-50%,50%) scale(1); }
+.sh h3 { font-size:15px; font-weight:600; margin-bottom:14px; color:var(--md-on-surface); }
+.sh .sr { display:flex; justify-content:space-between; padding:4px 0; font-size:12px; color:var(--md-on-surface-variant); }
+.sh .sr kbd { background:var(--md-surface-variant); padding:1px 8px; border-radius:var(--md-shape-xs); font-size:11px; font-family:var(--md-body-font); color:var(--md-on-surface); }
+
+/* Sleep Timer badge */
+.timer-badge {
+  position:fixed; top:12px; right:12px;
+  background:var(--md-primary-container); color:var(--md-on-primary-container);
+  padding:6px 14px; border-radius:var(--md-shape-full);
+  font-size:11px; font-weight:500; display:none; z-index:50;
+  box-shadow:var(--md-elevation-2);
+}
+
+/* Sleep timer panel */
+.timer-panel {
+  position:fixed; bottom:90px; left:auto; right:auto;
+  display:flex; gap:4px; z-index:30;
+}
+@media(max-width:768px){.timer-panel{display:none}}
+.timer-btn {
+  background:var(--md-surface); border:1px solid var(--md-outline-variant);
+  color:var(--md-on-surface); padding:4px 10px;
+  border-radius:var(--md-shape-full); cursor:pointer;
+  font-size:10px; font-family:var(--md-body-font);
+  box-shadow:var(--md-elevation-2); transition:var(--transition);
+}
+.timer-btn:hover { border-color:var(--md-primary); color:var(--md-primary); }
+.timer-btn.active { background:var(--md-primary-container); border-color:var(--md-primary); color:var(--md-primary); }
+.timer-btn-cancel { background:var(--md-error-container); border:none; color:var(--md-on-error-container); padding:4px 8px; border-radius:var(--md-shape-full); cursor:pointer; font-size:10px; font-family:var(--md-body-font); }
+
+/* Mobile now playing bar (tappable) */
+@media(max-width:768px){
+  .pl-l { cursor:pointer; }
+  .pl-l:active { opacity:.7; }
+}
+
+/* Modal */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:150;
+  display:none; align-items:center; justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.show { display:flex; }
+.modal {
+  background:var(--md-surface); border-radius:var(--md-shape-xl);
+  padding:24px; max-width:340px; width:90%;
+  box-shadow:var(--md-elevation-5); animation:modalIn .2s ease;
+}
+@keyframes modalIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.modal h3 { font-size:16px; font-weight:600; margin-bottom:12px; }
+.modal p { font-size:13px; color:var(--md-on-surface-variant); margin-bottom:6px; line-height:1.5; word-break:break-all; }
+.modal .btn-close {
+  background:var(--md-primary); color:var(--md-on-primary);
+  border:none; padding:8px 24px; border-radius:var(--md-shape-full);
+  font-size:13px; font-weight:500; cursor:pointer; margin-top:12px;
+  font-family:var(--md-body-font); transition:var(--transition);
+}
+.modal .btn-close:hover { filter:brightness(1.1); }
+</style>
+</head>
+<body>
+
+<script>
+// ═══════════════════════════════ Store ═══════════════════════════════
+var API = 'https://api.qijieya.cn/meting/';
+var S = {
+  pl: [], queue: [], idx: 0, play: false, mute: false, vol: 0.7,
+  prevVol: 0.7, rep: 'all', shuf: false,
+  fav: JSON.parse(localStorage.getItem('mf')||'[]'),
+  recent: JSON.parse(localStorage.getItem('mr')||'[]'),
+  view: 'discover', timer: 0, timerId: null,
+  speed: 1, speeds: [0.75, 1, 1.25, 1.5, 2],
+  playingFromPLId: null
+};
+try { S.vol = parseFloat(localStorage.getItem('mv')) || 0.7; } catch(e){}
+try { var th = localStorage.getItem('mt'); if(th) document.body.classList.toggle('light', th==='1'); } catch(e){}
+
+var a = null;
+try { a = document.getElementById('audio') || (function(){
+  var e=document.createElement('audio'); e.id='audio'; e.preload='metadata';
+  document.body.appendChild(e); return e; })();
+} catch(e){ a = new Audio(); }
+if(a) { a.volume = S.vol; a.playbackRate = S.speed; }
+
+var lyrics = [];
+var _vizRunning=false, _vizAnimId=null;
+
+// ═══════════════════════════════ Helpers ═══════════════════════════════
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmt(t){if(!t||isNaN(t))return'0:00';var m=Math.floor(t/60),s=Math.floor(t%60);return m+':'+(s<10?'0':'')+s}
+function key(s){return s.name+'|'+s.artist}
+function fb(w,h,c){return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='"+w+"' height='"+h+"'%3E%3Crect fill='"+(c||'%23333')+"' width='"+w+"' height='"+h+"'/%3E%3C/svg%3E"}
+function dfCover(){return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%2322222a' width='200' height='200'/%3E%3Ctext x='100' y='100' text-anchor='middle' dominant-baseline='central' fill='%237c5cfc' font-size='50' opacity='.4'%3E%E2%99%AA%3C/text%3E%3C/svg%3E"}
+var _tt, _ttTimer=0;
+function toast(m, type){
+  var e=document.getElementById('toast');if(!e)return;
+  e.textContent=m;e.className='toast'+(type?' '+type:'');
+  e.classList.add('show');
+  clearTimeout(_tt);_tt=setTimeout(function(){e.classList.remove('show')},2000);
+}
+function saveFav(){localStorage.setItem('mf',JSON.stringify(S.fav))}
+function saveRecent(){localStorage.setItem('mr',JSON.stringify(S.recent.slice(0,50)))}
+function saveTheme(){try{localStorage.setItem('mt',document.body.classList.contains('light')?'1':'0')}catch(e){}}
+
+// ═══════════════════════════════ API ═══════════════════════════════
+async function api(p){
+  p.server='netease';
+  var q=new URLSearchParams(p);
+  var r=await fetch(API+'?'+q);
+  var t=await r.text();
+  if(!t)return[];
+  try{return JSON.parse(t)}catch(e){return t}
+}
+
+// ═══════════════════════════════ LRC ═══════════════════════════════
+function parseLRC(t){
+  if(!t||!t.trim())return[];
+  var lines=t.split('\n'),res=[],re=/\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
+  for(var i=0;i<lines.length;i++){
+    var m=lines[i].match(re);
+    if(!m)continue;
+    var txt=lines[i].replace(re,'').trim();
+    if(!txt)continue;
+    for(var j=0;j<m.length;j++){
+      var p=m[j].replace(/[\[\]]/g,'').split(/[:.]/);
+      var sec=parseInt(p[0])*60+parseInt(p[1])+parseInt(p[2])/(p[2].length===2?100:1000);
+      res.push({time:sec,text:txt});
+    }
+  }
+  res.sort(function(a,b){return a.time-b.time});
+  return res;
+}
+
+// ═══════════════════════════════ Playlists ═══════════════════════════════
+var plData=[
+  {id:'3778678',name:'热歌榜'},{id:'3779629',name:'新歌榜'},
+  {id:'19723756',name:'飙升榜'},{id:'991879426',name:'网络热歌'},
+  {id:'2809577409',name:'私人雷达'},{id:'540621082',name:'J-Pop'},
+  {id:'745382879',name:'轻音乐'},{id:'2619366284',name:'随机日推'}
+];
+
+async function loadPL(){
+  var g=document.getElementById('plGrid');if(!g)return;
+  g.innerHTML='';
+  for(var i=0;i<plData.length;i++){
+    var p=plData[i];
+    var item=document.createElement('div');
+    item.className='pl-item';
+    item.dataset.plid=p.id;
+    item.onclick=function(id,nm){return function(){loadPlaylist(id,nm)}}(p.id,p.name);
+    var img=document.createElement('img');
+    img.src=fb(28,28,'%23222');img.alt='';
+    img.loading='lazy';
+    item.appendChild(img);
+    var info=document.createElement('div');
+    info.className='pln';info.textContent=p.name;
+    item.appendChild(info);
+    var indicator=document.createElement('span');
+    indicator.className='pl-playing';indicator.textContent='♪';
+    item.appendChild(indicator);
+    g.appendChild(item);
+    (function(im,id){api({type:'playlist',id:id,limit:'1'}).then(function(d){if(d&&d.length)im.src=d[0].pic}).catch(function(){})})(img,p.id);
+  }
+}
+
+function showPlaylistCards(){
+  var area=document.getElementById('cArea');
+  var html='<div class="list-hdr"><h2>推荐歌单</h2><span class="cnt">'+plData.length+' 个</span></div>';
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:4px 0;">';
+  for(var i=0;i<plData.length;i++){
+    var p=plData[i];
+    html+='<div onclick="loadPlaylist(\''+p.id+'\',\''+esc(p.name)+'\')" style="background:var(--md-surface-variant);border-radius:var(--md-shape-lg);overflow:hidden;cursor:pointer;transition:all .2s ease;" onmouseover="this.style.transform=\'scale(1.03)\';this.style.boxShadow=\'var(--md-elevation-3)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">';
+    html+='<div style="aspect-ratio:1;background:#222;display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--md-on-surface-variant);overflow:hidden;" class="pl-card-img" data-plid="'+p.id+'">🎵</div>';
+    html+='<div style="padding:8px 10px;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(p.name)+'</div></div>';
+  }
+  html+='</div>';
+  area.innerHTML='<div class="sl-w">'+html+'</div>';
+  for(var i=0;i<plData.length;i++){
+    (function(id){
+      api({type:'playlist',id:id,limit:'1'}).then(function(d){
+        if(d&&d.length){
+          var imgs=document.querySelectorAll('.pl-card-img[data-plid="'+id+'"]');
+          if(imgs.length) imgs[0].innerHTML='<img src="'+d[0].pic+'" style="width:100%;height:100%;object-fit:cover;">';
+        }
+      }).catch(function(){});
+    })(plData[i].id);
+  }
+}
+
+// ═══════════════════════════════ Load / Search ═══════════════════════════════
+async function loadPlaylist(id,name){
+  switchView('discover');
+  var area=document.getElementById('cArea');
+  area.innerHTML='<div class="sl-w"><div class="sp"></div></div>';
+  try{
+    var data=await api({type:'playlist',id:id});
+    if(!data||!data.length){area.innerHTML='<div class="sl-w"><div class="em"><p>歌单为空</p></div></div>';return}
+    S.pl=data;S.queue=data.slice();S.idx=0;S.playingFromPLId=id;
+    renderList(data,'📋 '+name);
+    // Mark playlist as active
+    var items=document.querySelectorAll('.pl-item');
+    for(var i=0;i<items.length;i++)items[i].classList.toggle('active',items[i].dataset.plid===id);
+  }catch(e){area.innerHTML='<div class="sl-w"><div class="em"><p>加载失败</p></div></div>'}
+}
+
+async function doSearch(){
+  var q=document.getElementById('sInp').value.trim();
+  if(!q)return;
+  switchView('discover');
+  var area=document.getElementById('cArea');
+  area.innerHTML='<div class="sl-w"><div class="sp"></div></div>';
+  try{
+    var data=await api({type:'search',id:q,limit:'50'});
+    if(!data||!data.length){area.innerHTML='<div class="sl-w"><div class="em"><p>未找到 "'+esc(q)+'"</p></div></div>';return}
+    S.pl=data;S.queue=data.slice();S.idx=0;S.playingFromPLId=null;
+    var items=document.querySelectorAll('.pl-item');
+    for(var i=0;i<items.length;i++)items[i].classList.remove('active');
+    renderList(data,'🔍 '+q);
+  }catch(e){area.innerHTML='<div class="sl-w"><div class="em"><p>搜索失败</p></div></div>'}
+}
+
+// ═══════════════════════════════ Render List ═══════════════════════════════
+function renderList(songs,title){
+  var html='<div class="list-hdr"><h2>'+esc(title)+'</h2>';
+  html+='<span class="cnt">'+songs.length+' 首</span>';
+  html+='<button class="filter-btn" onclick="toggleFilter()">🔍 筛选</button></div>';
+  html+='<div class="filter-bar" id="filterBar"><input type="text" placeholder="在当前列表中搜索..." oninput="filterList(this.value)" autocomplete="off"></div>';
+  html+='<div class="sl">';
+  for(var i=0;i<songs.length;i++){
+    var s=songs[i],f=S.fav.indexOf(key(s))>=0,eq=S.queue[S.idx]===s;
+    var durStr = s.duration ? fmt(s.duration) : '';
+    html+='<div class="si'+(eq?' active':'')+'" data-i="'+i+'" onclick="playAt('+i+')">';
+    html+='<div class="idx">'+(eq?'<div class="playing-indicator"><span></span><span></span><span></span><span></span></div>':(i+1))+'</div>';
+    html+='<div class="sii"><img src="'+s.pic+'" alt="" loading="lazy" onerror="this.src=\''+fb(36,36,'%23222')+'\'">';
+    html+='<div class="sim"><div class="sin">'+esc(s.name)+'</div><div class="sia">'+esc(s.artist)+'</div></div></div>';
+    html+='<div class="dur">'+durStr+'</div>';
+    html+='<div class="siact"><svg viewBox="0 0 24 24" fill="'+(f?'currentColor':'none')+'" stroke="currentColor" stroke-width="2"'+(f?' class="fav"':'')+' onclick="event.stopPropagation();toggleFav('+i+')">';
+    html+='<path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div></div>';
+  }
+  html+='</div>';
+  var area=document.getElementById('cArea');
+  area.innerHTML=html;
+  window._songs=songs;
+  setTimeout(scrollToActive, 50);
+  updateFavBadge();
+}
+
+function scrollToActive(){
+  var active=document.querySelector('.si.active');
+  if(active) active.scrollIntoView({block:'center',behavior:'smooth'});
+}
+
+var _filteredSongs=null;
+function toggleFilter(){
+  var fb=document.getElementById('filterBar');
+  fb.classList.toggle('show');
+  if(fb.classList.contains('show'))fb.querySelector('input').focus();
+  else filterList('');
+}
+function filterList(q){
+  if(!window._songs)return;
+  var all=window._songs;
+  if(!q.trim()){renderList(all,document.querySelector('.list-hdr h2').textContent);return}
+  var filtered=all.filter(function(s){return s.name.toLowerCase().indexOf(q.toLowerCase())>=0||s.artist.toLowerCase().indexOf(q.toLowerCase())>=0});
+  _filteredSongs=filtered;
+  S.pl=filtered;S.queue=filtered.slice();S.idx=0;
+  renderList(filtered,'🔍 '+q);
+}
+
+// ═══════════════════════════════ Playback ═══════════════════════════════
+function playAt(idx){
+  if(!S.pl.length)return;
+  if(S.shuf){S.queue=buildShuffle(S.pl,idx);S.idx=0}
+  else{S.queue=S.pl.slice();S.idx=idx}
+  playCurrent();
+}
+function playCurrent(){
+  if(!S.queue.length)return;
+  var song=S.queue[S.idx];
+  if(!song){S.idx=0;return playCurrent()}
+  a.src=song.url;a.load();
+  a.playbackRate=S.speed;
+  a.play().then(function(){
+    S.play=true;updatePlayBtn();updateNow(song);updateActive();
+    fetchLyrics(song.lrc);
+    document.title=song.name+' - '+song.artist+' - MelodyFlow';
+    addRecent(song);
+    setupAudioViz();
+    setupMediaSession(song);
+    updatePanelBg(song.pic);
+  }).catch(function(e){console.warn(e);toast('播放失败，尝试下一首','warn');if(S.queue.length>1)setTimeout(nextTrack,1500)});
+}
+function togglePlay(){
+  if(!S.queue.length)return;
+  if(S.play){a.pause();S.play=false}else{a.play().then(function(){S.play=true;setupAudioViz()}).catch(function(){})}
+  updatePlayBtn();
+}
+function nextTrack(){
+  if(!S.queue.length)return;
+  if(S.rep==='one'){a.currentTime=0;a.play().catch(function(){});return}
+  if(S.idx<S.queue.length-1)S.idx++;
+  else if(S.rep==='all')S.idx=0;
+  else{S.play=false;updatePlayBtn();return}
+  playCurrent();
+}
+function prevTrack(){
+  if(!S.queue.length)return;
+  if(a.currentTime>3){a.currentTime=0;return}
+  S.idx=S.idx>0?S.idx-1:S.queue.length-1;
+  playCurrent();
+}
+function buildShuffle(arr,start){
+  var rest=[];
+  for(var i=0;i<arr.length;i++)if(i!==start)rest.push(arr[i]);
+  for(var i=rest.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=rest[i];rest[i]=rest[j];rest[j]=t}
+  rest.unshift(arr[start]);return rest;
+}
+
+// ═══════════════════════════════ Recent Plays ═══════════════════════════════
+function addRecent(song){
+  var k=key(song);
+  S.recent=S.recent.filter(function(r){return key(r)!==k});
+  S.recent.unshift(song);
+  if(S.recent.length>50)S.recent.pop();
+  saveRecent();
+}
+function showRecent(){
+  if(!S.recent.length){toast('暂无最近播放记录','warn');return}
+  var songs=S.recent.slice(0,30);
+  S.pl=songs;S.queue=songs.slice();S.idx=0;S.playingFromPLId=null;
+  var items=document.querySelectorAll('.pl-item');
+  for(var i=0;i<items.length;i++)items[i].classList.remove('active');
+  renderList(songs,'🕐 最近播放');
+}
+
+// ═══════════════════════════════ Favorites ═══════════════════════════════
+function showFav(){
+  if(!S.fav.length){toast('💔 还没有收藏的歌曲','warn');return}
+  // Build songs from S.fav keys — need to scan S.recent for full data
+  var songs=[];
+  // Try from recent first
+  for(var i=0;i<S.recent.length;i++){
+    if(S.fav.indexOf(key(S.recent[i]))>=0) songs.push(S.recent[i]);
+  }
+  // If still empty, use keys as placeholder
+  if(!songs.length && S.fav.length){
+    for(var i=0;i<S.fav.length;i++){
+      var parts=S.fav[i].split('|');
+      songs.push({name:parts[0]||'未知',artist:parts[1]||'未知',pic:dfCover(),url:'',lrc:'',duration:0});
+    }
+  }
+  S.pl=songs;S.queue=songs.slice();S.idx=0;S.playingFromPLId=null;
+  var items=document.querySelectorAll('.pl-item');
+  for(var i=0;i<items.length;i++)items[i].classList.remove('active');
+  renderList(songs,'❤️ 我的收藏');
+}
+
+function updateFavBadge(){
+  var badge=document.querySelector('.nav-item[data-v="fav"] .fav-badge');
+  if(badge) badge.style.display=S.fav.length?'block':'none';
+}
+
+// ═══════════════════════════════ Modes ═══════════════════════════════
+function toggleShuffle(){
+  S.shuf=!S.shuf;
+  var btn=document.getElementById('shuffleBtn');
+  if(btn)btn.classList.toggle('am',S.shuf);
+  if(S.shuf&&S.pl.length){S.queue=buildShuffle(S.pl,S.idx);S.idx=0}
+  else if(!S.shuf&&S.pl.length){S.queue=S.pl.slice();var ni=S.pl.indexOf(S.queue[S.idx]);S.idx=ni>=0?ni:0}
+  toast(S.shuf?'🔀 随机播放':'▶️ 顺序播放');
+}
+function cycleRepeat(){
+  var modes=['all','one','none'];
+  S.rep=modes[(modes.indexOf(S.rep)+1)%3];
+  var btn=document.getElementById('repeatBtn');
+  if(!btn)return;
+  btn.classList.remove('am');
+  if(S.rep==='one'){
+    btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/><text x="12" y="18" text-anchor="middle" fill="currentColor" font-size="10" font-weight="bold">1</text></svg>';
+    btn.classList.add('am');toast('🔂 单曲循环');
+  }else if(S.rep==='all'){
+    btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>';
+    btn.classList.add('am');toast('🔁 列表循环');
+  }else{btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>';toast('➡️ 顺序播放')}
+}
+
+// ═══════════════════════════════ Speed Control ═══════════════════════════════
+function cycleSpeed(){
+  var idx=S.speeds.indexOf(S.speed);
+  S.speed=S.speeds[(idx+1)%S.speeds.length];
+  a.playbackRate=S.speed;
+  var btn=document.getElementById('speedBtn');
+  if(btn) btn.textContent=S.speed+'x';
+  toast('⏩ 倍速 '+S.speed+'x');
+}
+
+// ═══════════════════════════════ Sleep Timer ═══════════════════════════════
+function setSleepTimer(mins){
+  if(S.timerId){clearTimeout(S.timerId);S.timerId=null;S.timer=0;
+    document.getElementById('timerBadge').style.display='none';
+    var btns=document.querySelectorAll('.timer-btn');
+    for(var i=0;i<btns.length;i++)btns[i].classList.remove('active');
+    toast('⏰ 定时关闭已取消');
+    return
+  }
+  if(!mins)return;
+  S.timer=mins;
+  var badge=document.getElementById('timerBadge');
+  badge.textContent='⏰ '+mins+'分钟后关闭';
+  badge.style.display='block';
+  var btns=document.querySelectorAll('.timer-btn');
+  for(var i=0;i<btns.length;i++)btns[i].classList.toggle('active',parseInt(btns[i].dataset.min)===mins);
+  toast('⏰ '+mins+'分钟后停止播放');
+  S.timerId=setTimeout(function(){a.pause();S.play=false;updatePlayBtn();S.timerId=null;S.timer=0;badge.style.display='none';var btns2=document.querySelectorAll('.timer-btn');for(var i=0;i<btns2.length;i++)btns2[i].classList.remove('active');toast('⏰ 播放已停止')},mins*60000);
+}
+
+// ═══════════════════════════════ MediaSession API ═══════════════════════════════
+function setupMediaSession(song){
+  if(!('mediaSession' in navigator))return;
+  navigator.mediaSession.metadata=new MediaMetadata({
+    title:song.name,
+    artist:song.artist,
+    album:'MelodyFlow',
+    artwork:[{src:song.pic,sizes:'512x512',type:'image/png'}]
+  });
+  navigator.mediaSession.setActionHandler('play',function(){togglePlay()});
+  navigator.mediaSession.setActionHandler('pause',function(){togglePlay()});
+  navigator.mediaSession.setActionHandler('previoustrack',function(){prevTrack()});
+  navigator.mediaSession.setActionHandler('nexttrack',function(){nextTrack()});
+  navigator.mediaSession.setActionHandler('seekforward',function(){
+    a.currentTime=Math.min(a.duration||0,(a.currentTime||0)+10);
+  });
+  navigator.mediaSession.setActionHandler('seekbackward',function(){
+    a.currentTime=Math.max(0,(a.currentTime||0)-10);
+  });
+}
+
+// ═══════════════════════════════ Audio Visualizer (Pure Canvas - no WebAudio hijacking) ═══════════════════════════════
+function setupAudioViz(){
+  if(_vizRunning)return;
+  _vizRunning=true;
+  drawViz();
+}
+function drawViz(){
+  if(!_vizRunning)return;
+  var canvas=document.getElementById('viz');
+  if(!canvas||canvas.style.display==='none'){_vizRunning=false;return}
+  var ctx=canvas.getContext('2d');
+  var w=canvas.width=canvas.clientWidth*2||600,h=canvas.height=48*2||96;
+  var bars=64;
+  ctx.clearRect(0,0,w,h);
+  var t=Date.now()/1000;
+  var barW=w/bars*0.7,gap=w/bars*0.3;
+  for(var i=0;i<bars;i++){
+    // Simulate frequency bars using sine combinations — no WebAudio, no audio hijacking
+    var seed=Math.sin(i*77+t*S.speed*1.8+Math.sin(i*0.3))*0.4
+           +Math.sin(i*43+t*2.5+Math.sin(i*0.7))*0.35
+           +Math.sin(i*113+t*1.2+Math.sin(t*0.5+i*0.2))*0.25;
+    var pct=Math.max(0.05,Math.min(1,Math.abs(seed)+0.05));
+    var barH=Math.max(2,pct*h*0.88);
+    var x=i*(barW+gap)+w*0.02;
+    var hue=230+pct*50;
+    ctx.fillStyle='hsla('+hue+',70%,60%,'+Math.max(0.25,pct)+')';
+    ctx.fillRect(x,h-barH,Math.max(2,barW),barH);
+  }
+  _vizAnimId=requestAnimationFrame(drawViz);
+}
+function stopViz(){
+  _vizRunning=false;
+  if(_vizAnimId){cancelAnimationFrame(_vizAnimId);_vizAnimId=null}
+  var canvas=document.getElementById('viz');
+  if(canvas){
+    var ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+}
+
+// ═══════════════════════════════ UI ═══════════════════════════════
+function updatePlayBtn(){
+  var btn=document.getElementById('playBtn'),icon=document.getElementById('playIcon');
+  if(!btn||!icon)return;
+  if(S.play){btn.classList.add('p');icon.innerHTML='<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'}
+  else{btn.classList.remove('p');icon.innerHTML='<path d="M8 5v14l11-7z"/>'}
+  var cw=document.getElementById('cw');if(cw)cw.classList.toggle('p',S.play);
+}
+function updateNow(song){
+  document.getElementById('plCover').src=song.pic||dfCover();
+  document.getElementById('plCover').onerror=function(){this.src=dfCover()};
+  document.getElementById('plName').textContent=song.name||'未在播放';
+  document.getElementById('plArtist').textContent=song.artist||'未知歌手';
+  document.getElementById('plArtist').onclick=function(){if(S.queue.length)showSongInfo()};
+  document.getElementById('pnCover').src=song.pic||dfCover();
+  document.getElementById('pnCover').onerror=function(){this.src=dfCover()};
+  document.getElementById('pnName').textContent=song.name||'未在播放';
+  document.getElementById('pnArtist').textContent=song.artist||'选择歌曲开始聆听';
+}
+function updateActive(){
+  var items=document.querySelectorAll('.si');
+  for(var i=0;i<items.length;i++){
+    var el=items[i],idx=parseInt(el.getAttribute('data-i'));
+    if(isNaN(idx))continue;
+    var s=S.pl[idx],active=s&&S.queue[S.idx]===s;
+    el.classList.toggle('active',active);
+    var idxEl=el.querySelector('.idx');
+    if(idxEl)idxEl.innerHTML=active?'<div class="playing-indicator"><span></span><span></span><span></span><span></span></div>':(idx+1);
+  }
+}
+function updatePanelBg(src){
+  var bg=document.getElementById('panelBg');
+  if(bg) bg.innerHTML=src?'<img src="'+src+'" alt="">':'';
+}
+function toggleTheme(){
+  document.body.classList.toggle('light');
+  var btn=document.getElementById('themeBtn');
+  if(btn) btn.textContent=document.body.classList.contains('light')?'☀️':'🌙';
+  saveTheme();
+  toast(document.body.classList.contains('light')?'☀️ 浅色模式':'🌙 深色模式');
+}
+
+// ═══════════════════════════════ Lyrics ═══════════════════════════════
+async function fetchLyrics(url){
+  var c=document.getElementById('lc');
+  if(!url||url===''){c.innerHTML='<div class="ll em">暂无歌词</div>';lyrics=[];return}
+  c.innerHTML='<div class="sp"></div>';lyrics=[];
+  try{
+    var r=await fetch(url),t=await r.text(),p=parseLRC(t);
+    lyrics=p;
+    if(!p.length){c.innerHTML='<div class="ll em">纯音乐 / 暂无歌词</div>';return}
+    var html='<div class="ll em" style="min-height:12px;padding:2px;"></div>';
+    for(var i=0;i<p.length;i++)html+='<div class="ll" data-li="'+i+'" onclick="seekToLyric('+i+')">'+esc(p[i].text)+'</div>';
+    html+='<div class="ll em" style="min-height:12px;padding:2px;"></div>';
+    c.innerHTML=html;
+  }catch(e){c.innerHTML='<div class="ll em">歌词加载失败</div>'}
+}
+function updateLrc(time){
+  if(!lyrics.length)return;
+  var ai=-1;
+  for(var i=lyrics.length-1;i>=0;i--){if(time>=lyrics[i].time){ai=i;break}}
+  var all=document.querySelectorAll('.ll[data-li]');
+  for(var i=0;i<all.length;i++)all[i].classList.toggle('active',parseInt(all[i].getAttribute('data-li'))===ai);
+  if(ai>=0){var el=document.querySelector('.ll[data-li="'+ai+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}
+}
+function seekToLyric(idx){
+  if(!lyrics[idx]||!a.duration)return;
+  a.currentTime=lyrics[idx].time;
+}
+
+// ═══════════════════════════════ Seek & Volume ═══════════════════════════════
+function seek(e){
+  var bar=document.getElementById('progBar');
+  if(!bar)return;
+  var rect=bar.getBoundingClientRect();
+  var pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+  if(a.duration)a.currentTime=pct*a.duration;
+}
+function setVolume(e){
+  var bar=document.getElementById('volBar');
+  if(!bar)return;
+  var rect=bar.getBoundingClientRect();
+  S.vol=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+  a.volume=S.vol;S.mute=S.vol===0;
+  localStorage.setItem('mv',S.vol);updateVolUI();
+}
+function updateVolUI(){
+  document.getElementById('volFill').style.width=(S.vol*100)+'%';
+  var icon=document.getElementById('volIcon');
+  if(!icon)return;
+  if(S.mute||S.vol===0)icon.innerHTML='<path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+  else if(S.vol<0.5)icon.innerHTML='<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07"/>';
+  else icon.innerHTML='<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/>';
+}
+function toggleMute(){
+  if(S.mute){S.mute=false;S.vol=S.prevVol||0.7}
+  else{S.prevVol=S.vol;S.mute=true;S.vol=0}
+  a.volume=S.vol;updateVolUI();
+}
+
+// ═══════════════════════════════ Fav ═══════════════════════════════
+function toggleFav(idx){
+  var s=S.pl[idx];
+  if(!s)return;
+  var k=key(s),i=S.fav.indexOf(k);
+  if(i>=0){S.fav.splice(i,1);toast('已取消收藏')}else{S.fav.push(k);toast('❤️ 已收藏','success')}
+  saveFav();
+  var t=document.querySelector('.list-hdr h2');
+  renderList(S.pl,t?t.textContent:'');
+  updateActive();
+  updateFavBadge();
+}
+
+// ═══════════════════════════════ Song Info ═══════════════════════════════
+function showSongInfo(){
+  var s=S.queue[S.idx];
+  if(!s){toast('没有正在播放的歌曲','warn');return}
+  document.getElementById('modalTitle').textContent=s.name||'-';
+  document.getElementById('modalArtist').textContent='歌手: '+ (s.artist||'-');
+  document.getElementById('modalAlbum').textContent='专辑: '+ (s.album||'-');
+  document.getElementById('modalDur').textContent='时长: '+ (s.duration?fmt(s.duration):'-');
+  document.getElementById('modalID').textContent='ID: '+(s.url&&s.url.match(/id=(\d+)/)?.[1]||'-');
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('show')}
+
+// ═══════════════════════════════ View ═══════════════════════════════
+function switchView(v){
+  S.view=v;
+  var items=document.querySelectorAll('.nav-item');
+  for(var i=0;i<items.length;i++)items[i].classList.remove('active');
+  var sel=document.querySelector('.nav-item[data-v="'+v+'"]');
+  if(sel)sel.classList.add('active');
+  if(v==='discover') showPlaylistCards();
+  else if(v==='queue') renderQueue();
+  else if(v==='fav') showFav();
+}
+function renderQueue(){
+  var area=document.getElementById('cArea');
+  if(!S.queue.length){area.innerHTML='<div class="sl-w"><div class="em"><p>播放队列为空</p></div></div>';return}
+  var html='<div class="list-hdr"><h2>播放队列</h2><span class="cnt">'+S.queue.length+' 首</span></div><div class="sl">';
+  for(var i=0;i<S.queue.length;i++){
+    var s=S.queue[i],ac=i===S.idx;
+    html+='<div class="si'+(ac?' active':'')+'" onclick="playAtQ('+i+')">';
+    html+='<div class="idx">'+(ac?'<div class="playing-indicator"><span></span><span></span><span></span><span></span></div>':(i+1))+'</div>';
+    html+='<div class="sii"><img src="'+s.pic+'" alt="" loading="lazy" onerror="this.src=\''+fb(36,36,'%23222')+'\'">';
+    html+='<div class="sim"><div class="sin">'+esc(s.name)+'</div><div class="sia">'+esc(s.artist)+'</div></div></div>';
+    html+='<div class="siact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" onclick="event.stopPropagation();rmQ('+i+')">';
+    html+='<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>';
+  }
+  html+='</div>';
+  area.innerHTML=html;
+}
+function playAtQ(idx){
+  S.idx=idx;
+  playCurrent();
+}
+function rmQ(idx){
+  S.queue.splice(idx,1);
+  if(idx<S.idx)S.idx--;
+  else if(idx===S.idx){
+    if(S.queue.length){if(S.idx>=S.queue.length)S.idx=S.queue.length-1;playCurrent()}
+    else{S.play=false;a.pause();updatePlayBtn()}
+  }
+  renderQueue();
+}
+function togglePanel(){
+  var p=document.getElementById('panel');
+  if(window.innerWidth<=1100){
+    if(p.style.display==='flex'||p.classList.contains('show')){p.classList.remove('show');p.style.display=''}
+    else{p.classList.add('show');p.style.display='flex'}
+  }
+}
+
+// ═══════════════════════════════ Audio Events ═══════════════════════════════
+a.addEventListener('timeupdate',function(){
+  if(a.duration){
+    document.getElementById('progFill').style.width=(a.currentTime/a.duration*100)+'%';
+    document.getElementById('curTime').textContent=fmt(a.currentTime);
+    document.getElementById('totTime').textContent=fmt(a.duration);
+    updateLrc(a.currentTime);
+  }
+});
+a.addEventListener('ended',function(){if(S.rep==='one'){a.currentTime=0;a.play().catch(function(){})}else nextTrack()});
+a.addEventListener('play',function(){S.play=true;updatePlayBtn();setupAudioViz()});
+a.addEventListener('pause',function(){S.play=false;updatePlayBtn();stopViz()});
+a.addEventListener('error',function(){stopViz();if(S.queue.length>1){toast('播放出错，跳到下一首','warn');setTimeout(nextTrack,1500)}});
+a.addEventListener('loadedmetadata',function(){document.getElementById('totTime').textContent=fmt(a.duration)});
+
+// ═══════════════════════════════ Drag Progress ═══════════════════════════════
+(function(){
+  var d=false;
+  var bar=document.getElementById('progBar');
+  if(!bar)return;
+  bar.addEventListener('mousedown',function(e){d=true;seek(e);bar.classList.add('dragging')});
+  document.addEventListener('mousemove',function(e){
+    if(!d)return;
+    var rect=bar.getBoundingClientRect();
+    var pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+    if(a.duration)a.currentTime=pct*a.duration;
+  });
+  document.addEventListener('mouseup',function(){d=false;bar.classList.remove('dragging')});
+  // Touch support
+  bar.addEventListener('touchstart',function(e){d=true;var t=e.touches[0];seek({clientX:t.clientX});bar.classList.add('dragging')},{passive:true});
+  bar.addEventListener('touchmove',function(e){if(!d)return;e.preventDefault();var t=e.touches[0],rect=bar.getBoundingClientRect();var pct=Math.max(0,Math.min(1,(t.clientX-rect.left)/rect.width));if(a.duration)a.currentTime=pct*a.duration},{passive:false});
+  bar.addEventListener('touchend',function(){d=false;bar.classList.remove('dragging')});
+})();
+
+// ═══════════════════════════════ Drag Volume ═══════════════════════════════
+(function(){
+  var d=false;
+  var bar=document.getElementById('volBar');
+  if(!bar)return;
+  bar.addEventListener('mousedown',function(e){d=true;setVolume(e)});
+  document.addEventListener('mousemove',function(e){
+    if(!d)return;
+    setVolume(e);
+  });
+  document.addEventListener('mouseup',function(){d=false});
+  // Touch
+  bar.addEventListener('touchstart',function(e){d=true;var t=e.touches[0];setVolume({clientX:t.clientX})},{passive:true});
+  bar.addEventListener('touchmove',function(e){if(!d)return;e.preventDefault();var t=e.touches[0];setVolume({clientX:t.clientX})},{passive:false});
+  bar.addEventListener('touchend',function(){d=false});
+})();
+
+// ═══════════════════════════════ Keyboard ═══════════════════════════════
+document.addEventListener('keydown',function(e){
+  if(e.target.tagName==='INPUT'){if(e.key==='Escape')e.target.blur();return}
+  switch(e.code){
+    case 'Space':e.preventDefault();togglePlay();break;
+    case 'ArrowLeft':a.currentTime=Math.max(0,(a.currentTime||0)-5);break;
+    case 'ArrowRight':a.currentTime=Math.min(a.duration||0,(a.currentTime||0)+5);break;
+    case 'ArrowUp':e.preventDefault();S.vol=Math.min(1,(S.vol||0)+0.08);a.volume=S.vol;S.mute=false;updateVolUI();localStorage.setItem('mv',S.vol);break;
+    case 'ArrowDown':e.preventDefault();S.vol=Math.max(0,(S.vol||0)-0.08);a.volume=S.vol;updateVolUI();localStorage.setItem('mv',S.vol);break;
+    case 'KeyN':nextTrack();break;
+    case 'KeyP':prevTrack();break;
+    case 'KeyM':toggleMute();break;
+    case 'KeyS':toggleShuffle();break;
+    case 'KeyR':cycleRepeat();break;
+    case 'KeyI':showSongInfo();break;
+    case 'KeyT':toggleTheme();break;
+    case 'KeyV':cycleSpeed();break;
+    case 'Slash':if(!e.shiftKey){e.preventDefault();var h=document.getElementById('sh');if(h){h.classList.toggle('show');setTimeout(function(){if(h)h.classList.remove('show')},5000)}}break;
+    case 'Escape':closeModal();var hs=document.getElementById('sh');if(hs)hs.classList.remove('show');break;
+  }
+});
+
+// ═══════════════════════════════ Init ═══════════════════════════════
+document.addEventListener('DOMContentLoaded',function(){
+  loadPL();
+  showPlaylistCards();
+  updateVolUI();
+  document.getElementById('volFill').style.width=(S.vol*100)+'%';
+  document.getElementById('themeBtn').textContent=document.body.classList.contains('light')?'☀️':'🌙';
+  updateFavBadge();
+  // Set default cover
+  document.getElementById('plCover').src=dfCover();
+  document.getElementById('pnCover').src=dfCover();
+});
+console.log('🎵 MelodyFlow M3 loaded — Press ? for shortcuts');
+// Register service worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
+
+<!-- ═══════════════════════════ HTML Structure ═══════════════════════════ -->
+<div class="app">
+
+  <!-- Navigation Rail -->
+  <nav class="nav-rail">
+    <div class="nav-logo" title="MelodyFlow">♪</div>
+    <div class="nav-item active" data-v="discover" onclick="switchView('discover')" title="发现音乐">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <span>音乐</span>
+    </div>
+    <div class="nav-item" data-v="queue" onclick="switchView('queue')" title="播放队列">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      <span>队列</span>
+    </div>
+    <div class="nav-item" data-v="fav" onclick="switchView('fav')" title="我的收藏">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      <span>收藏</span>
+      <div class="fav-badge"></div>
+    </div>
+    <div class="nav-item" onclick="showRecent()" title="最近播放">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>最近</span>
+    </div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="切换主题">🌙</button>
+  </nav>
+
+  <!-- Sidebar (Playlists) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-title">推荐歌单</div>
+    <div class="pl-grid" id="plGrid"></div>
+  </aside>
+
+  <!-- Sleep Timer Buttons -->
+  <div class="timer-panel">
+    <button class="timer-btn" data-min="15" onclick="setSleepTimer(15)" title="15分钟后停止">15min</button>
+    <button class="timer-btn" data-min="30" onclick="setSleepTimer(30)" title="30分钟后停止">30min</button>
+    <button class="timer-btn" data-min="45" onclick="setSleepTimer(45)" title="45分钟后停止">45min</button>
+    <button class="timer-btn" data-min="60" onclick="setSleepTimer(60)" title="60分钟后停止">60min</button>
+    <button class="timer-btn-cancel" onclick="setSleepTimer(0)" title="取消定时">✕</button>
+  </div>
+
+  <!-- Main Content -->
+  <div class="mw">
+    <main class="main">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="sInp" placeholder="搜索歌曲、歌手..." onkeydown="if(event.key==='Enter')doSearch()" autocomplete="off">
+        <button class="search-btn" onclick="doSearch()">搜索</button>
+      </div>
+      <div id="cArea" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+        <div class="sl-w">
+          <div class="em">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <p>选择一个歌单开始聆听</p>
+            <p class="sub">按 <kbd style="background:var(--md-surface-variant);padding:0 6px;border-radius:4px;font-size:10px">?</kbd> 查看快捷键</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom App Bar (Player) -->
+    <footer class="player" id="player">
+      <div class="pl-l" onclick="togglePanel()">
+        <img id="plCover" src="" alt="封面">
+        <div class="pm">
+          <div class="pn" id="plName">未在播放</div>
+          <div class="pa" id="plArtist">点击查看详情</div>
+        </div>
+      </div>
+      <div class="pl-c">
+        <div class="pb">
+          <button onclick="toggleShuffle()" id="shuffleBtn" title="随机播放">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+          </button>
+          <button onclick="prevTrack()" title="上一首">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+          </button>
+          <button class="bp" onclick="togglePlay()" id="playBtn" title="播放/暂停">
+            <div class="eq"><div class="eqb"></div><div class="eqb"></div><div class="eqb"></div><div class="eqb"></div></div>
+            <svg class="pd" viewBox="0 0 24 24" fill="currentColor" id="playIcon"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button onclick="nextTrack()" title="下一首">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+          </button>
+          <button onclick="cycleRepeat()" id="repeatBtn" title="循环模式">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+          </button>
+        </div>
+        <div class="pa2">
+          <span class="t" id="curTime">0:00</span>
+          <div class="pb2" id="progBar"><div class="pf" id="progFill"></div></div>
+          <span class="t" id="totTime">0:00</span>
+        </div>
+      </div>
+      <!-- Mobile controls -->
+      <div class="pl-c-mobile">
+        <button class="bp" onclick="togglePlay()" id="playBtnM" title="播放/暂停" style="width:36px;height:36px;background:var(--md-primary);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--md-on-primary);box-shadow:var(--md-elevation-2);">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button onclick="prevTrack()" style="background:transparent;border:none;cursor:pointer;color:var(--md-on-surface-variant);width:28px;height:28px;">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+        <button onclick="nextTrack()" style="background:transparent;border:none;cursor:pointer;color:var(--md-on-surface-variant);width:28px;height:28px;">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+      </div>
+      <div class="pl-r">
+        <button class="speed-btn" id="speedBtn" onclick="cycleSpeed()" title="播放速度">1x</button>
+        <div class="vw">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" onclick="toggleMute()" id="volIcon" style="width:16px;height:16px;cursor:pointer;"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+          <div class="vb" id="volBar"><div class="vf" id="volFill"></div></div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" onclick="showSongInfo()" title="歌曲信息" style="cursor:pointer;">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" onclick="togglePanel()" title="歌词面板" style="cursor:pointer;">
+          <path d="M12 1a11 11 0 00-11 11c0 5 3.2 9.4 7.6 11l-.3-1.9A7.5 7.5 0 011 12a7.5 7.5 0 1115 0 7.5 7.5 0 01-4 6.6L12.4 23A11.1 11.1 0 0012 1z"/>
+        </svg>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Now Playing Panel (Right) -->
+  <aside class="panel" id="panel">
+    <div class="panel-bg" id="panelBg"></div>
+    <button class="panel-close" onclick="togglePanel()">✕</button>
+    <div class="cw" id="cw">
+      <img id="pnCover" src="" alt="封面">
+      <div class="cr"></div>
+      <div class="cc"></div>
+    </div>
+    <div class="ni">
+      <h3 id="pnName">未在播放</h3>
+      <p id="pnArtist">选择歌曲开始聆听</p>
+    </div>
+    <canvas class="viz" id="viz"></canvas>
+    <div class="lc" id="lc"><div class="ll em">暂无歌词</div></div>
+  </aside>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Shortcut Overlay -->
+<div class="sh" id="sh">
+  <h3>⌨️ 快捷键</h3>
+  <div class="sr"><span>播放/暂停</span><kbd>Space</kbd></div>
+  <div class="sr"><span>上一首 / 下一首</span><kbd>P / N</kbd></div>
+  <div class="sr"><span>快退 / 快进 5s</span><kbd>← →</kbd></div>
+  <div class="sr"><span>音量 +/‑</span><kbd>↑ ↓</kbd></div>
+  <div class="sr"><span>静音</span><kbd>M</kbd></div>
+  <div class="sr"><span>随机播放</span><kbd>S</kbd></div>
+  <div class="sr"><span>循环模式</span><kbd>R</kbd></div>
+  <div class="sr"><span>歌曲详情</span><kbd>I</kbd></div>
+  <div class="sr"><span>切换主题</span><kbd>T</kbd></div>
+  <div class="sr"><span>切换倍速</span><kbd>V</kbd></div>
+  <div class="sr"><span>关闭弹窗</span><kbd>Esc</kbd></div>
+</div>
+
+<!-- Song Info Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3 id="modalTitle">-</h3>
+    <p id="modalArtist">-</p>
+    <p id="modalAlbum">-</p>
+    <p id="modalDur">-</p>
+    <p id="modalID">-</p>
+    <button class="btn-close" onclick="closeModal()">关闭</button>
+  </div>
+</div>
+
+<!-- Sleep Timer Badge -->
+<div class="timer-badge" id="timerBadge"></div>
+
+</body>
+</html>

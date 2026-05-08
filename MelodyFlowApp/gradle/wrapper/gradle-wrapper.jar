@@ -1,0 +1,8 @@
+HTTP/1.1 307 Temporary Redirect
+Date: Fri, 08 May 2026 14:08:37 GMT
+Connection: keep-alive
+Location: https://github.com/gradle/gradle-distributions/releases/download/v8.5.0/gradle-8.5-bin.zip
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Server: cloudflare
+CF-RAY: 9f890999595a8e7d-LAX
+
